@@ -1,0 +1,7 @@
+building a tiny "AI" that can answer one question: 
+1."Given a task, which tool is the best choice?"
+
+The specific task in the example: "measure 200ml of water and pour it into a bowl." 
+The candidate tools are Cup, Bowl, MeasuringTool, MeasuringCup. 
+The system has to look at each tool, score how well it can do the required actions, and pick a winner — and show its work using category-theory ideas (weighted relations, composition, pushouts, etc.) 
+instead of just hardcoding "the answer is MeasuringCup."
