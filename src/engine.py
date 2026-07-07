@@ -36,6 +36,60 @@ def run_domain(files, setup_queries, required_actions, label):
     print()
 
 
+
+def build_pair_list_str(metta):
+    """
+    Queries the bridge facts declared in profunctor.metta and turns
+    them into a MeTTa list literal, e.g. ((contain store) ((measure lookup) ((pour rangeQuery) ()))).
+    This means Python never hardcodes the bridge mapping -- it only
+    reads whatever profunctor.metta currently declares.
+    """
+    result = metta.run("!(match &self (bridge $a $b) ($a $b))")
+    pairs = [str(atom) for group in result for atom in group]
+
+    pair_list = "()"
+    for p in reversed(pairs):
+        pair_list = f"({p} {pair_list})"
+    return pair_list
+
+
+def run_profunctor():
+    """
+    Loads both domains + pushout + profunctor bridge, constructs
+    MeasuringCup first (it must exist before it can be scored),
+    then scores every (Domain A concept, Domain B concept) pair
+    using the bridge table as the only source of cross-domain meaning.
+    """
+    metta = MeTTa()
+    for path in [
+        "metta/engine.metta",
+        "metta/domain_a_kitchen.metta",
+        "metta/pushout.metta",
+        "metta/domain_b_datastructures.metta",
+        "metta/profunctor.metta",
+    ]:
+        with open(path) as f:
+            metta.run(f.read())
+
+    metta.run("!(build-pushout Cup MeasuringTool MeasuringCup)")
+
+    pair_list = build_pair_list_str(metta)
+
+    # Domain membership is given explicitly here, same as required_actions
+    # is given explicitly per domain in DOMAINS -- it can't be derived from
+    # facts alone since both domains share the plain (concept $c) tag.
+    domain_a_concepts = ["Cup", "Bowl", "MeasuringTool", "MeasuringCup"]
+    domain_b_concepts = ["List", "HashMap", "TreeMap"]
+
+    print("--- Profunctor scores: Domain A concept <-> Domain B concept ---")
+    for ca in domain_a_concepts:
+        for cb in domain_b_concepts:
+            query = f"!(profunctor-score {ca} {cb} {pair_list})"
+            result = metta.run(query)
+            print(f"({ca} <-> {cb})  {result}")
+    print()
+
+
 # ----------------------------------------------------------------
 # Domain configs: each domain is just DATA now, not a bespoke function.
 # Adding a new domain later means adding one entry here, not writing
@@ -58,6 +112,7 @@ DOMAINS = [
 ]
 
 
+
 if __name__ == "__main__":
     for domain in DOMAINS:
         run_domain(
@@ -66,3 +121,5 @@ if __name__ == "__main__":
             required_actions=domain["required_actions"],
             label=domain["label"],
         )
+
+    run_profunctor()   # <-- NEW LINE
