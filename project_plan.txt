@@ -1,0 +1,152 @@
+====================================================================
+QUANTILE RELATIONAL COGNITIVE SYSTEM (QRel_[0,1]) - PROJECT PLAN
+====================================================================
+Author: Yibeltal
+Context: iCog Labs category-theory training assignment
+Framework: MeTTa / OmegaClaw, using the hyperon Python package (PeTTa)
+
+--------------------------------------------------------------------
+STEP 5: ENVIRONMENT SETUP (PeTTa / hyperon)
+--------------------------------------------------------------------
+Install:
+    pip install hyperon --break-system-packages
+
+Verify it works:
+    python3 -c "
+    from hyperon import MeTTa
+    metta = MeTTa()
+    print(metta.run('(= (add1 $x) (+ $x 1)) !(add1 5)'))
+    "
+Expected output: [[6]]
+
+Status: VERIFIED WORKING (hyperon 0.2.10, installed fresh, test passed).
+
+Usage pattern for this project:
+    from hyperon import MeTTa
+    metta = MeTTa()
+    metta.run("<atoms and rules go here>")
+
+--------------------------------------------------------------------
+STEP 1: DOMAIN DATA
+--------------------------------------------------------------------
+
+--- Domain A (REQUIRED): Kitchen Tools ---
+Concepts (objects): Cup, Bowl, MeasuringTool, MeasuringCup (pushout, see Step 3)
+Actions  (objects): pour, contain, measure
+
+Weighted relation table (concept -> action, weight in [0,1]):
+
+    Concept          | pour | contain | measure
+    -----------------|------|---------|--------
+    Cup              | 0.80 | 0.85    | 0.20
+    Bowl             | 0.40 | 0.95    | 0.05
+    MeasuringTool    | 0.10 | 0.15    | 0.90
+    MeasuringCup     | computed in Step 3 (pushout)
+
+Reasoning:
+- Cup: good at pouring/containing (has a spout-like opening, holds liquid),
+  bad at precision measurement (no markings).
+- Bowl: excellent at containing (wide, stable, no spill), poor at pouring
+  (no spout), useless for measuring (no markings).
+- MeasuringTool: precise measuring device, but not really a vessel -
+  can't pour or contain liquid well on its own.
+
+--- Domain B (FUNCTOR DEMO): Data Structures ---
+Concepts (objects): List, HashMap, TreeMap
+Actions  (objects): store, lookup, rangeQuery
+
+Weighted relation table:
+
+    Concept   | store | lookup | rangeQuery
+    ----------|-------|--------|-----------
+    List      | 0.90  | 0.20   | 0.10
+    HashMap   | 0.90  | 0.95   | 0.05
+    TreeMap   | 0.80  | 0.70   | 0.95
+
+Reasoning:
+- List: fast to append/store, slow to search (linear scan), no ordering.
+- HashMap: fast exact-match lookup, but no ordering, so range queries are bad.
+- TreeMap: slightly slower at store/lookup than HashMap, but the only
+  structure that supports ordered range queries well.
+
+Purpose: the exact same composition engine (Step 2) runs unmodified on
+this table, proving the engine is a functor - a structure-preserving
+map that works across domains, not hardcoded logic for kitchen tools.
+
+--------------------------------------------------------------------
+STEP 2: COMPOSITION RULES
+--------------------------------------------------------------------
+
+AND rule (required actions must ALL hold - multiply):
+    score(concept, {a1, a2, ...}) = weight(concept,a1) x weight(concept,a2) x ...
+
+OR / max-product rule (alternative routes through a middle step b):
+    (R ; S)(a, c) = max_b [ R(a,b) x S(b,c) ]
+
+Worked example - Domain A, task = "measure AND pour":
+    Cup:            0.20 x 0.80 = 0.16
+    Bowl:           0.05 x 0.40 = 0.02
+    MeasuringTool:  0.90 x 0.10 = 0.09
+    MeasuringCup:   0.95 x 0.80 = 0.76   (see Step 3 for MeasuringCup weights)
+
+Worked example - Domain B, task = "lookup AND rangeQuery":
+    List:     0.20 x 0.10 = 0.02
+    HashMap:  0.95 x 0.05 = 0.0475
+    TreeMap:  0.70 x 0.95 = 0.665   <- winner
+
+--------------------------------------------------------------------
+STEP 3: PUSHOUT (COLIMIT) - CONSTRUCTING MeasuringCup
+--------------------------------------------------------------------
+Shared object: VolumeObject (both sources deal with holding/measuring a volume)
+
+Source concepts:
+    Cup:             pour 0.80, contain 0.85, measure 0.20
+    MeasuringDevice: pour 0.05, contain 0.10, measure 0.95
+
+Pushout rule: take the MAX, cell by cell (merged object inherits
+whichever source was stronger, for each action):
+
+    MeasuringCup.pour    = max(0.80, 0.05) = 0.80
+    MeasuringCup.contain = max(0.85, 0.10) = 0.85
+    MeasuringCup.measure = max(0.20, 0.95) = 0.95
+
+Full Domain A composite table (measure AND pour), MeasuringCup included:
+    Cup:            0.20 x 0.80 = 0.16
+    Bowl:           0.05 x 0.40 = 0.02
+    MeasuringTool:  0.90 x 0.10 = 0.09
+    MeasuringCup:   0.95 x 0.80 = 0.76   <- winner, computed not asserted
+
+--------------------------------------------------------------------
+STEP 4: PROFUNCTOR MATRIX
+--------------------------------------------------------------------
+Comparing the two pushout source concepts against physical features:
+
+                     | holdsLiquid | hasScale
+    -----------------|-------------|----------
+    Cup              | 0.90        | 0.05
+    MeasuringDevice  | 0.10        | 0.95
+
+Reasoning: Cup's shape holds liquid well but has no markings (hasScale
+low). MeasuringDevice has precise markings but isn't built to hold
+liquid alone. This graded compatibility explains WHY gluing them via
+the pushout produces an object strong at both.
+
+--------------------------------------------------------------------
+IMPLEMENTATION ORDER (Day 1 core, then Day 2 differentiators)
+--------------------------------------------------------------------
+Day 1 (required deliverables):
+    1. MeTTa engine: weighted facts + max-product composition rule
+       (Domain A) -> produces deliverable #1 (relation table) and #5
+       (reasoning trace)
+    2. CASL-style formal spec (sorts, preds, axioms) -> deliverable #4
+    3. Profunctor matrix in MeTTa -> deliverable #3
+    4. Pushout computed in MeTTa -> deliverable #2
+
+Day 2 (differentiators, stack in priority order):
+    5. Generalize engine, run unmodified on Domain B (functor demo)
+    6. Make pushout algorithmic/generic (already planned in step 4 above)
+    7. Visualize reasoning trace + pushout diagram
+    8. (stretch) NLP front-end: LLM parses plain instruction -> required
+       actions -> fed into the MeTTa engine
+    9. Final polish: README, full run-through, rehearse explanation
+====================================================================
