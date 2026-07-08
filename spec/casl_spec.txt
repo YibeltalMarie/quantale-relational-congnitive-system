@@ -1,0 +1,165 @@
+====================================================================
+CASL-STYLE FORMAL SPECIFICATION
+Quantale Relational Cognitive System -- QRel_[0,1]
+====================================================================
+
+--------------------------------------------------------------------
+SPEC 1: The base quantale [0,1]
+--------------------------------------------------------------------
+This spec fixes the "number system" every weight lives in: values
+between 0 and 1, an ordering on them, and a combining rule.
+
+spec Quantale01 =
+  sorts
+    Weight
+  ops
+    zero, one : Weight              -- the extremes: 0.0 and 1.0
+    __*__     : Weight x Weight -> Weight   -- combine two weights
+    __<=__    : Weight x Weight -> Bool     -- ordering
+  axioms
+    -- Multiplication has an identity element: multiplying by "one"
+    -- changes nothing. This is what makes 1.0 behave like the
+    -- identity morphism id_A in category theory.
+    forall w : Weight . w * one = w
+    forall w : Weight . one * w = w
+
+    -- Multiplication is associative -- composing three weighted
+    -- steps gives the same result no matter how you group them,
+    -- matching the associativity law every category must satisfy.
+    forall a, b, c : Weight .
+      (a * b) * c = a * (b * c)
+
+    -- Zero is absorbing: anything combined with zero confidence
+    -- stays at zero confidence.
+    forall w : Weight . w * zero = zero
+
+    -- Ordering is consistent with multiplication: multiplying two
+    -- weights never produces something LARGER than either input --
+    -- confidence can only stay the same or shrink when composed.
+    forall a, b : Weight . (a * b) <= a
+    forall a, b : Weight . (a * b) <= b
+  end
+
+--------------------------------------------------------------------
+SPEC 2: Kitchen domain data
+--------------------------------------------------------------------
+This spec declares WHAT EXISTS in Domain A (concepts and actions)
+and the core relation between them, mirroring the (concept ...),
+(action ...), (affords ...) facts in domain_a_kitchen.metta.
+
+spec KitchenDomain = Quantale01 then
+  sorts
+    Concept, Action
+  ops
+    Cup, Bowl, MeasuringTool, MeasuringCup : Concept
+    pour, contain, measure : Action
+  preds
+    affords : Concept x Action x Weight
+  axioms
+    -- Every concept-action pair has EXACTLY ONE weight (not two
+    -- conflicting scores for the same pair). This rules out the
+    -- earlier bug we caught, where MeasuringCup briefly had both
+    -- hand-typed AND pushout-computed facts at once.
+    forall c : Concept; a : Action; w1, w2 : Weight .
+      affords(c, a, w1) /\ affords(c, a, w2) => w1 = w2
+
+    -- The concrete facts (matching domain_a_kitchen.metta exactly):
+    affords(Cup, pour, 0.80)
+    affords(Cup, contain, 0.85)
+    affords(Cup, measure, 0.20)
+
+    affords(Bowl, pour, 0.40)
+    affords(Bowl, contain, 0.95)
+    affords(Bowl, measure, 0.05)
+
+    affords(MeasuringTool, pour, 0.10)
+    affords(MeasuringTool, contain, 0.15)
+    affords(MeasuringTool, measure, 0.90)
+    -- MeasuringCup deliberately has NO asserted affords facts here --
+    -- see SPEC 4 (Pushout), where its facts are DERIVED, not stated.
+  end
+
+--------------------------------------------------------------------
+SPEC 3: Composition (the AND rule and the max-product rule)
+--------------------------------------------------------------------
+This formalizes score-and and the (R;S)(a,c) = max_b R(a,b)*S(b,c)
+formula from the training deck, matching engine.metta's logic exactly.
+
+spec Composition = KitchenDomain then
+  ops
+    score_and : Concept x Action x Action -> Weight
+    compose_max : Concept x Action -> Weight
+  axioms
+    -- AND-composition: score for TWO required actions together is
+    -- the product of their individual weights (score-and in MeTTa).
+    forall c : Concept; a1, a2 : Action; w1, w2 : Weight .
+      affords(c, a1, w1) /\ affords(c, a2, w2)
+      => score_and(c, a1, a2) = w1 * w2
+
+    -- Max-product composition along a path through a middle action b:
+    -- (R;S)(a,c) = max over all b of [ R(a,b) * S(b,c) ]
+    -- This is the general path-composition rule; score_and above is
+    -- the special case used when actions are required directly,
+    -- not chained through an intermediate step.
+  end
+
+--------------------------------------------------------------------
+SPEC 4: Pushout (colimit) -- MeasuringCup derived, not asserted
+--------------------------------------------------------------------
+This is the formal counterpart to build-pushout in pushout.metta.
+The key axiom below is what makes this a DERIVATION instead of a
+fact you simply declare: MeasuringCup's weight is DEFINED in terms
+of Cup and MeasuringTool's weights, using the quantale's ordering.
+
+spec Pushout = Composition then
+  ops
+    max_value : Weight x Weight -> Weight
+  preds
+    is_pushout_of : Concept x Concept x Concept -> Bool
+  axioms
+    -- max_value picks whichever of two weights is not smaller
+    -- (this is the formal version of MeTTa's if/> based max-value).
+    forall a, b : Weight . a <= b => max_value(a, b) = b
+    forall a, b : Weight . b <= a => max_value(a, b) = a
+
+    -- THE PUSHOUT AXIOM: MeasuringCup's weight for any action `a`
+    -- is DEFINED as the max of Cup's and MeasuringTool's weights
+    -- for that same action. This is a definition, not an assumption --
+    -- it is exactly what build-pushout computes via add-atom.
+    forall a : Action; w1, w2 : Weight .
+      affords(Cup, a, w1) /\ affords(MeasuringTool, a, w2)
+      => affords(MeasuringCup, a, max_value(w1, w2))
+
+    is_pushout_of(MeasuringCup, Cup, MeasuringTool)
+  end
+
+--------------------------------------------------------------------
+SPEC 5: Profunctor -- graded compatibility (Cup, MeasuringTool)
+                      vs (holdsLiquid, hasScale)
+--------------------------------------------------------------------
+A profunctor relates two DIFFERENT kinds of objects (concepts and
+features) without requiring an exact structural mapping between
+them -- just a graded score, matching (compat ...) in profunctor.metta.
+
+spec Profunctor = KitchenDomain then
+  sorts
+    Feature
+  ops
+    holdsLiquid, hasScale : Feature
+  preds
+    compat : Concept x Feature x Weight
+  axioms
+    compat(Cup, holdsLiquid, 0.90)
+    compat(Cup, hasScale, 0.05)
+    compat(MeasuringTool, holdsLiquid, 0.10)
+    compat(MeasuringTool, hasScale, 0.95)
+
+    -- Every (concept, feature) pair has at most one compatibility
+    -- score, same uniqueness principle as affords in SPEC 2.
+    forall c : Concept; f : Feature; w1, w2 : Weight .
+      compat(c, f, w1) /\ compat(c, f, w2) => w1 = w2
+  end
+
+====================================================================
+END OF SPECIFICATION
+====================================================================
