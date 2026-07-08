@@ -1,20 +1,11 @@
 from hyperon import MeTTa
+from parse_instruction import parse_instruction
 
 
 def run_domain(files, setup_queries, required_actions, label):
     """
     Generic domain runner -- works for ANY domain, including ones that
     need a construction step (like a pushout) before scoring.
-
-    files:           list of .metta files to load, in order
-                      (engine.metta always first, then domain facts,
-                      then any extra files like pushout.metta)
-    setup_queries:   list of MeTTa queries to run AFTER loading files
-                      but BEFORE scoring -- e.g. triggering a pushout
-                      construction so a concept's facts exist before
-                      we try to score it. Empty list if nothing needed.
-    required_actions: list of action names the task requires (AND-composed)
-    label:           human-readable name for the printed output
     """
     metta = MeTTa()
 
@@ -37,40 +28,47 @@ def run_domain(files, setup_queries, required_actions, label):
 
 
 # ----------------------------------------------------------------
-# Domain configs: each domain is just DATA now, not a bespoke function.
-# Adding a new domain later means adding one entry here, not writing
-# new code -- that's the actual "generic engine" claim in practice.
+# Domain configs. Added: "valid_actions" (the full action vocabulary
+# the LLM is allowed to choose from) and "instruction" (the plain
+# English sentence a real user would type -- replaces the hardcoded
+# required_actions list from before).
 # ----------------------------------------------------------------
 DOMAINS = [
     {
         "label": "Domain A (kitchen tools)",
         "files": ["metta/engine.metta", "metta/domain_a_kitchen.metta", "metta/pushout.metta"],
-        # MeasuringCup has no facts until this setup query constructs them
         "setup_queries": ["!(build-pushout Cup MeasuringTool MeasuringCup)"],
-        "required_actions": ["measure", "pour"],
+        "valid_actions": ["pour", "contain", "measure"],
+        "instruction": "measure 200ml of water and pour it into a bowl",
     },
     {
         "label": "Domain B (data structures)",
         "files": ["metta/engine.metta", "metta/domain_b_datastructures.metta"],
-        "setup_queries": [],  # no construction step needed for this domain
-        "required_actions": ["lookup", "rangeQuery"],
+        "setup_queries": [],
+        "valid_actions": ["store", "lookup", "rangeQuery"],
+        "instruction": "look up a value by key and also fetch a range of entries in order",
     },
 ]
 
 
 if __name__ == "__main__":
     for domain in DOMAINS:
+        print(f"=== NLP front-end: parsing instruction for {domain['label']} ===")
+        print(f"Instruction: \"{domain['instruction']}\"")
+
+        # This is the new step: instead of a hardcoded action list,
+        # we ask Gemini to extract the required actions from plain
+        # English, constrained to this domain's known vocabulary.
+        required_actions = parse_instruction(domain["instruction"], domain["valid_actions"])
+        print(f"Extracted actions: {required_actions}")
+        print()
+
+        # Everything from here on is UNCHANGED from before -- the
+        # engine doesn't know or care that its input came from an LLM
+        # instead of a Python list you typed by hand.
         run_domain(
             files=domain["files"],
             setup_queries=domain["setup_queries"],
-            required_actions=domain["required_actions"],
+            required_actions=required_actions,
             label=domain["label"],
         )
-
-    # Profunctor matrix (deliverable #3)
-    metta = MeTTa()
-    for path in ["metta/engine.metta", "metta/domain_a_kitchen.metta", "metta/profunctor.metta"]:
-        with open(path) as f:
-            metta.run(f.read())
-    print("--- Profunctor compatibility matrix (Cup, MeasuringTool) x (holdsLiquid, hasScale) ---")
-    metta.run("!(print-matrix)")

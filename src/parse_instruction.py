@@ -65,6 +65,7 @@ Example valid reply: ["measure", "pour"]
 
 
 if __name__ == "__main__":
+    
     valid_actions_domain_a = ["pour", "contain", "measure"]
 
     instruction = "measure 200ml of water and pour it into a bowl"
