@@ -147,6 +147,20 @@ covering:
 4. The pushout as a formal derivation (not an assumption)
 5. The profunctor compatibility matrix
 
+
+## NLP front-end setup (additional requirement)
+
+Requires a Gemini API key from https://aistudio.google.com/apikey
+
+Create a `.env` file in the project root (never commit this file):
+
+GEMINI_API_KEY=your-key-here
+
+Then install the extra dependencies:
+```bash
+pip install google-genai python-dotenv
+```
+
 ## Status / next steps
 
 - [x] Core engine, both domains, functor demonstration
@@ -154,8 +168,8 @@ covering:
 - [x] Profunctor matrix
 - [x] CASL-style formal specification
 - [x] Pushout and reasoning-trace diagrams
-- [ ] Stretch: NLP front-end (parse a plain-language instruction into
-      required actions, feed directly into the engine) -- to be added
-      if time permits
+- [x] NLP front-end: Gemini parses plain-English instructions into
+      required actions; engine.py itself required zero changes to
+      consume LLM output instead of a hardcoded list
 
 
