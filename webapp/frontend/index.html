@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QRel[0,1] — Quantale Relational Cognitive System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #12141C;
+    --surface: #1B1E2B;
+    --surface-2: #232637;
+    --border: #2E3244;
+    --border-soft: #262A3A;
+    --gold: #E7B75F;
+    --gold-dim: #8A6E3C;
+    --teal: #5FD6C0;
+    --text: #F3F1E7;
+    --text-soft: #9498AC;
+    --text-faint: #5C6079;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    min-height: 100vh;
+  }
+
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 28px 22px;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+  }
+
+  .brand {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    margin: 0 0 2px;
+  }
+
+  .brand-sub {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--gold-dim);
+    margin: 0 0 28px;
+  }
+
+  .domain-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+
+  .domain-tab {
+    flex: 1;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-soft);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 9px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color .15s, color .15s;
+  }
+
+  .domain-tab.active {
+    border-color: var(--gold-dim);
+    color: var(--gold);
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    margin: 0 0 12px;
+  }
+
+  .concept-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+
+  .concept-name {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0 0 10px;
+  }
+
+  .morphism-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-soft);
+    margin-bottom: 5px;
+  }
+
+  .morphism-row:last-child { margin-bottom: 0; }
+
+  .morphism-arrow {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    position: relative;
+    min-width: 24px;
+  }
+
+  .morphism-arrow::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: -3px;
+    border-left: 5px solid var(--border);
+    border-top: 3px solid transparent;
+    border-bottom: 3px solid transparent;
+  }
+
+  .morphism-weight {
+    color: var(--gold);
+    min-width: 34px;
+    text-align: center;
+  }
+
+  .morphism-target {
+    color: var(--text);
+    min-width: 62px;
+  }
+
+  .main {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .header {
+    padding: 24px 32px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header h1 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 500;
+    margin: 0 0 4px;
+  }
+
+  .header p {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--text-faint);
+    margin: 0;
+  }
+
+  .conversation {
+    flex: 1;
+    padding: 28px 32px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .empty-state {
+    margin: auto;
+    text-align: center;
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    max-width: 360px;
+    line-height: 1.7;
+  }
+
+  .bubble-user {
+    align-self: flex-end;
+    max-width: 70%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px 12px 2px 12px;
+    padding: 12px 16px;
+    font-size: 14.5px;
+    line-height: 1.6;
+  }
+
+  .result-card {
+    align-self: flex-start;
+    max-width: 640px;
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+
+  .result-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    margin: 0 0 6px;
+  }
+
+  .extracted-actions {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--gold);
+    margin: 0 0 16px;
+  }
+
+  .score-row {
+    display: grid;
+    grid-template-columns: 130px 1fr 56px;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 9px;
+  }
+
+  .score-name {
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+
+  .score-name.winner { color: var(--teal); }
+
+  .score-track {
+    height: 8px;
+    background: var(--surface-2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .score-fill {
+    height: 100%;
+    background: var(--gold-dim);
+    border-radius: 4px;
+  }
+
+  .score-fill.winner { background: var(--teal); }
+
+  .score-value {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--text-soft);
+    text-align: right;
+  }
+
+  .winner-line {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-soft);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--teal);
+  }
+
+  .error-card {
+    align-self: flex-start;
+    max-width: 640px;
+    background: rgba(226, 75, 74, 0.08);
+    border: 1px solid rgba(226, 75, 74, 0.35);
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: #E88A89;
+  }
+
+  .input-bar {
+    padding: 18px 32px 26px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+  }
+
+  .input-bar input {
+    flex: 1;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 16px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+  }
+
+  .input-bar input:focus {
+    outline: none;
+    border-color: var(--gold-dim);
+  }
+
+  .input-bar input::placeholder { color: var(--text-faint); }
+
+  .compose-btn {
+    background: var(--gold);
+    color: #1B1509;
+    border: none;
+    border-radius: 10px;
+    padding: 0 22px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+
+  .compose-btn:hover { opacity: 0.88; }
+  .compose-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .loading-dots::after {
+    content: '';
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+
+  @keyframes dots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <p class="brand">QRel<span style="color:var(--gold)">[0,1]</span></p>
+    <p class="brand-sub">quantale relational cognitive system</p>
+
+    <div class="domain-tabs">
+      <button class="domain-tab active" data-domain="kitchen">Kitchen tools</button>
+      <button class="domain-tab" data-domain="datastructures">Data structures</button>
+    </div>
+
+    <p class="section-label">Concepts &amp; morphisms</p>
+    <div id="concepts-panel"></div>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <h1>Categorical reasoning, live</h1>
+      <p>Type a plain instruction — Gemini extracts required actions, the QRel engine composes and ranks every concept.</p>
+    </div>
+
+    <div class="conversation" id="conversation">
+      <div class="empty-state" id="empty-state">
+        try: "measure 200ml of water and pour it into a bowl"
+      </div>
+    </div>
+
+    <div class="input-bar">
+      <input type="text" id="instruction-input" placeholder="Describe what you need to do…" />
+      <button class="compose-btn" id="compose-btn">Compose →</button>
+    </div>
+  </main>
+</div>
+
+<script>
+const API_BASE = 'http://localhost:8000';
+let currentDomain = 'kitchen';
+
+async function loadConcepts(domain) {
+  const res = await fetch(`${API_BASE}/api/concepts/${domain}`);
+  const table = await res.json();
+  const panel = document.getElementById('concepts-panel');
+  panel.innerHTML = '';
+  for (const [concept, weights] of Object.entries(table)) {
+    const card = document.createElement('div');
+    card.className = 'concept-card';
+    const rows = Object.entries(weights)
+      .map(([action, w]) => `
+        <div class="morphism-row">
+          <span class="morphism-target" style="min-width:auto">${concept}</span>
+          <span class="morphism-arrow"></span>
+          <span class="morphism-weight">${w.toFixed(2)}</span>
+          <span class="morphism-arrow"></span>
+          <span class="morphism-target">${action}</span>
+        </div>
+      `).join('');
+    card.innerHTML = `<p class="concept-name">${concept}</p>${rows}`;
+    panel.appendChild(card);
+  }
+}
+
+document.querySelectorAll('.domain-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.domain-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentDomain = tab.dataset.domain;
+    loadConcepts(currentDomain);
+  });
+});
+
+async function compose() {
+  const input = document.getElementById('instruction-input');
+  const instruction = input.value.trim();
+  if (!instruction) return;
+
+  const emptyState = document.getElementById('empty-state');
+  if (emptyState) emptyState.remove();
+
+  const conversation = document.getElementById('conversation');
+  const btn = document.getElementById('compose-btn');
+
+  const userBubble = document.createElement('div');
+  userBubble.className = 'bubble-user';
+  userBubble.textContent = instruction;
+  conversation.appendChild(userBubble);
+
+  const loadingCard = document.createElement('div');
+  loadingCard.className = 'result-card';
+  loadingCard.innerHTML = `<p class="result-label">Composing<span class="loading-dots"></span></p>`;
+  conversation.appendChild(loadingCard);
+  conversation.scrollTop = conversation.scrollHeight;
+
+  input.value = '';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/reason`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: currentDomain, instruction })
+    });
+
+    const data = await res.json();
+    loadingCard.remove();
+
+    if (!res.ok) {
+      const errCard = document.createElement('div');
+      errCard.className = 'error-card';
+      errCard.textContent = data.detail || 'Something went wrong.';
+      conversation.appendChild(errCard);
+    } else {
+      const maxScore = Math.max(...data.scores.map(s => s.score), 0.0001);
+      const rows = data.scores.map(s => {
+        const isWinner = s.concept === data.winner;
+        const pct = (s.score / maxScore) * 100;
+        return `
+          <div class="score-row">
+            <span class="score-name ${isWinner ? 'winner' : ''}">${s.concept}</span>
+            <div class="score-track"><div class="score-fill ${isWinner ? 'winner' : ''}" style="width:${pct}%"></div></div>
+            <span class="score-value">${s.score.toFixed(4)}</span>
+          </div>
+        `;
+      }).join('');
+
+      const resultCard = document.createElement('div');
+      resultCard.className = 'result-card';
+      resultCard.innerHTML = `
+        <p class="result-label">Extracted actions</p>
+        <p class="extracted-actions">[${data.extracted_actions.join(', ')}]</p>
+        ${rows}
+        <div class="winner-line">→ ${data.winner} wins by composition</div>
+      `;
+      conversation.appendChild(resultCard);
+    }
+  } catch (err) {
+    loadingCard.remove();
+    const errCard = document.createElement('div');
+    errCard.className = 'error-card';
+    errCard.textContent = 'Could not reach the backend. Is it running on localhost:8000?';
+    conversation.appendChild(errCard);
+  }
+
+  btn.disabled = false;
+  conversation.scrollTop = conversation.scrollHeight;
+}
+
+document.getElementById('compose-btn').addEventListener('click', compose);
+document.getElementById('instruction-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') compose();
+});
+
+loadConcepts(currentDomain);
+</script>
+
+</body>
+</html>
