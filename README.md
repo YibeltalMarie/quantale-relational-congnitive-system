@@ -46,7 +46,7 @@ This runs, in order:
 4. The profunctor compatibility matrix
 
 ## Project structure
-
+```
 category_theory/
 ├── metta/
 │   ├── engine.metta                    generic composition engine
@@ -83,7 +83,7 @@ category_theory/
 │                                        profunctor matrix, with reasoning
 └── README.md                           this file
 
-
+```
 ## Core concepts, briefly
 
 - **Object** -- a "thing" in the system (a concept like `Cup`, or an
